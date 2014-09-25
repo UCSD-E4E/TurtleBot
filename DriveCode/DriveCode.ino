@@ -12,8 +12,8 @@
 #define Y_JOY_FLIP	1
 #define X_JOY_LOW	0
 #define Y_JOY_LOW	0
-#define X_JOY_MID	512
-#define Y_JOY_MID	512
+#define X_JOY_MID	506
+#define Y_JOY_MID	510
 #define X_JOY_HI	1023
 #define Y_JOY_HI	1023
 #define X_JOY_DBND	15
@@ -43,39 +43,76 @@ void loop(){
 	xJoystick = analogRead(X_JOYSTICK);
 	
 	// Scale and flip joystick values to fit [-100, 100]
+	yJoystick -= 512;
+	yJoystick = yJoystick / 512.0 * 100;
+	xJoystick -= 512;
+	xJoystick = xJoystick / 512.0 * 100;
 	
 	// Begin mapping!
 	lSpd = (yJoystick == 0 ? 1 : sign(yJoystick)) * mag(xJoystick, yJoystick);
 	rSpd = (yJoystick == 0 ? 1 : sign(yJoystick)) * mag(xJoystick, yJoystick);
 
+	// Pretrim
+	if(abs(lSpd) >= 100){
+		lSpd = 100 * sign(lSpd);
+	}
+	if(abs(rSpd) >= 100){
+		rSpd = 100 * sign(rSpd);
+	}
+
+
 	if(abs(yJoystick) <= Y_JOY_DBND && abs(xJoystick) <= X_JOY_DBND){	// Set deadband
 		lSpd = rSpd = 0;
+
 	}else if(abs(yJoystick) >= abs(xJoystick)){	// if mostly forward
 		if(xJoystick < 0){
 			lSpd *= 1 + xJoystick / 100.0;
 		}else{
 			rSpd *= 1 - xJoystick / 100.0;
 		}
+		if(yJoystick < 0){	// fix reverse direction
+			int temp = lSpd;
+			lSpd = rSpd;
+			rSpd = temp;
+		}
 	}else{	// if turning
-		if(xJoystick < 0){
-			lSpd *= -1 * (1 + yJoystick / 100.0);
-		}else{
-			rSpd *= -1 * (1 + yJoystick / 100.0);
+		if(xJoystick < 0 && yJoystick < 0){
+			rSpd *= (yJoystick + 100) / 100.0;
+			lSpd *= -1;
+		}else if(xJoystick < 0 && yJoystick >= 0){
+			lSpd *= (yJoystick - 100) / 100.0;
+			lSpd *= -1;
+			rSpd *= -1;
+		}else if(xJoystick > 0 && yJoystick < 0){
+			rSpd *= (yJoystick + 100) / 100.0;
+		}else if(xJoystick > 0 && yJoystick >= 0){
+			lSpd *= (yJoystick - 100) / 100.0;
 		}
 	}
-	if(yJoystick < 0){	// fix reverse direction
-		int temp = lSpd;
-		lSpd = rSpd;
-		rSpd = temp;
+
+	// Trim speed
+	if(abs(lSpd) >= 100){
+		lSpd = 100 * sign(lSpd);
+	}
+	if(abs(rSpd) >= 100){
+		rSpd = 100 * sign(rSpd);
+	}
+
+	// Add motor deadband
+	if(abs(lSpd) <= 10){
+		lSpd = 0;
+	}
+	if(abs(rSpd) <= 10){
+		rSpd = 0;
 	}
 
 	// Set motor speeds
 	// Left Motor
-	if(lSpd > 0){
+	if(lSpd < 0){
 		digitalWrite(L_MOTOR_DIR, HIGH);
 		digitalWrite(L_MOTOR_BRK, LOW);
 		analogWrite(L_MOTOR_PWM, map(abs(lSpd), 0, 100, 0, 255));
-	}else if(lSpd < 0){
+	}else if(lSpd > 0){
 		digitalWrite(L_MOTOR_DIR, LOW);
 		digitalWrite(L_MOTOR_BRK, LOW);
 		analogWrite(L_MOTOR_PWM, map(abs(lSpd), 0, 100, 0, 255));
@@ -85,25 +122,26 @@ void loop(){
 	}
 
 	// Right Motor
-	if(rSpd > 0){
+	if(rSpd < 0){
 		digitalWrite(R_MOTOR_DIR, HIGH);
 		digitalWrite(R_MOTOR_BRK, LOW);
-		analogWrite(R_MOTOR_PWM, map(abs(lSpd), 0, 100, 0, 255));
-	}else if(rSpd < 0){
+		analogWrite(R_MOTOR_PWM, map(abs(rSpd), 0, 100, 0, 255));
+	}else if(rSpd > 0){
 		digitalWrite(R_MOTOR_DIR, LOW);
 		digitalWrite(R_MOTOR_BRK, LOW);
-		analogWrite(R_MOTOR_PWM, map(abs(lSpd), 0, 100, 0, 255));
+		analogWrite(R_MOTOR_PWM, map(abs(rSpd), 0, 100, 0, 255));
 	}else{
 		digitalWrite(R_MOTOR_BRK, HIGH);
 		analogWrite(R_MOTOR_PWM, 0);
 	}
+
+	delay(50);
+	return;
 }
 
-// TODO: implement sign(int)
 int sign(int val){
 	return abs(val) / val;
 }
-// TODO: implement mag(int, int)
 int mag(int xVal, int yVal){
 	return sqrt(xVal * xVal + yVal * yVal);
 }
