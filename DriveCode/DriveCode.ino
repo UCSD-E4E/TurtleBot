@@ -16,7 +16,7 @@
  * right in the reverse direction pivoting on the right tread.  Full rear
  * deflection causes the robot to move rearwards.  Right rear deflection causes
  * the robot to turn to the left in the reverse direction while pivoting on the
- * left read.  Full right deflection causes the robot to turn to the right in
+ * left tread.  Full right deflection causes the robot to turn to the right in
  * position.  Forward right deflection causes the robot to turn to the right
  * while pivoting on the right tread.  This control scheme allows for fully
  * continuous driving, with no discontinuities in the motion of the robot as
